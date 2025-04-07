@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Set correct dataset path
-dataset_path = "/Users/brianbanaszczyk/Downloads/CSE 3000/hate-speech-dataset-master"
+dataset_path = "hate-speech-dataset-master"
 all_files_path = os.path.join(dataset_path, "all_files")
 annotations_path = os.path.join(dataset_path, "annotations_metadata.csv")
 
