@@ -5,9 +5,12 @@ import joblib
 from sklearn.metrics import confusion_matrix, classification_report
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.utils.class_weight import compute_class_weight
+from sklearn.linear_model import LogisticRegression
+from imblearn.over_sampling import SMOTE
 
 # Set correct dataset path
-dataset_path = "hate-speech-dataset-master"
+dataset_path = "/Users/brianbanaszczyk/Downloads/CSE 3000/hate-speech-dataset-master"
 all_files_path = os.path.join(dataset_path, "all_files")
 annotations_path = os.path.join(dataset_path, "annotations_metadata.csv")
 
@@ -16,7 +19,6 @@ if not os.path.exists(annotations_path):
     raise FileNotFoundError(f"Metadata file not found at {annotations_path}. Check your dataset path.")
 
 # Load the trained models and vectorizers
-logistic_model = joblib.load("logistic_model.pkl")
 nb_model = joblib.load("naive_bayes_model.pkl")
 tfidf_vectorizer = joblib.load("tfidf_vectorizer.pkl")
 count_vectorizer = joblib.load("count_vectorizer.pkl")
@@ -48,16 +50,33 @@ if df['text'].isnull().all():
 print("Class Distribution:")
 print(df['label'].value_counts())
 
-# Load test data
-X_test_tfidf = tfidf_vectorizer.transform(df['text'])
-X_test_count = count_vectorizer.transform(df['text'])
-y_test = df['label']
+# Vectorize text data
+X_tfidf = tfidf_vectorizer.fit_transform(df['text'])
+y = df['label']
 
-# Model Predictions
-logistic_pred = logistic_model.predict(X_test_tfidf)
-nb_pred = nb_model.predict(X_test_count)
+# Apply SMOTE to balance the dataset
+smote = SMOTE(random_state=42)
+X_resampled, y_resampled = smote.fit_resample(X_tfidf, y)
 
-# Evaluate False Positives & False Negatives
+# Compute class weights for Logistic Regression
+class_weights = compute_class_weight("balanced", classes=np.unique(y_resampled), y=y_resampled)
+class_weight_dict = {0: class_weights[0], 1: class_weights[1]}
+
+# Train a new Logistic Regression model with class balancing
+logistic_model = LogisticRegression(class_weight=class_weight_dict)
+logistic_model.fit(X_resampled, y_resampled)
+
+# Save the improved model
+joblib.dump(logistic_model, 'logistic_model_balanced.pkl')
+
+# Predictions
+y_pred = logistic_model.predict(X_tfidf)
+
+# Evaluate Model
+print("Balanced Logistic Regression Performance:")
+print(classification_report(y, y_pred))
+
+# Plot Confusion Matrix
 def plot_confusion_matrix(y_true, y_pred, model_name):
     cm = confusion_matrix(y_true, y_pred)
     plt.figure(figsize=(6, 5))
@@ -67,13 +86,7 @@ def plot_confusion_matrix(y_true, y_pred, model_name):
     plt.title(f"Confusion Matrix - {model_name}")
     plt.show()
 
-print("Logistic Regression Performance:")
-print(classification_report(y_test, logistic_pred))
-plot_confusion_matrix(y_test, logistic_pred, "Logistic Regression")
-
-print("Naive Bayes Performance:")
-print(classification_report(y_test, nb_pred))
-plot_confusion_matrix(y_test, nb_pred, "Naive Bayes")
+plot_confusion_matrix(y, y_pred, "Balanced Logistic Regression")
 
 # Test the model with sample sentences containing different contexts
 test_sentences = [
@@ -85,15 +98,11 @@ test_sentences = [
 
 def predict_bias(text):
     text_tfidf = tfidf_vectorizer.transform([text])
-    text_count = count_vectorizer.transform([text])
-    
     logistic_result = logistic_model.predict(text_tfidf)[0]
-    nb_result = nb_model.predict(text_count)[0]
     
     label_map = {0: "Non-Toxic", 1: "Toxic"}
     print(f"\nText: {text}")
-    print(f"Logistic Regression: {label_map[logistic_result]}")
-    print(f"Naive Bayes: {label_map[nb_result]}")
+    print(f"Balanced Logistic Regression: {label_map[logistic_result]}")
 
 for sentence in test_sentences:
     predict_bias(sentence)
