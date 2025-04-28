@@ -1,8 +1,9 @@
 import os
 import pandas as pd
 import torch
+import joblib
 from torch.utils.data import Dataset, DataLoader
-from sklearn.model_selection import train_test_split  # ✅ Added missing import
+from sklearn.model_selection import train_test_split
 from transformers import DistilBertTokenizerFast, DistilBertForSequenceClassification, Trainer, TrainingArguments
 
 # Load dataset
@@ -14,6 +15,7 @@ annotations = pd.read_csv(annotations_path)
 annotations = annotations[annotations['label'].isin(['hate', 'noHate'])]
 annotations['label'] = annotations['label'].map({'noHate': 0, 'hate': 1})
 
+# Load text data
 def load_text(file_id):
     file_path = os.path.join(all_files_path, f"{file_id}.txt")
     if os.path.exists(file_path):
@@ -24,6 +26,7 @@ def load_text(file_id):
 annotations['text'] = annotations['file_id'].apply(load_text)
 annotations = annotations.dropna(subset=['text'])
 
+# Split into 80% train and 20% test
 train_texts, test_texts, train_labels, test_labels = train_test_split(
     annotations['text'].tolist(),
     annotations['label'].tolist(),
@@ -32,8 +35,10 @@ train_texts, test_texts, train_labels, test_labels = train_test_split(
     stratify=annotations['label']
 )
 
+# Load tokenizer
 tokenizer = DistilBertTokenizerFast.from_pretrained('distilbert-base-uncased')
 
+# Create dataset
 class HateSpeechDataset(Dataset):
     def __init__(self, texts, labels, tokenizer, max_length=512):
         self.encodings = tokenizer(texts, truncation=True, padding=True, max_length=max_length)
@@ -50,9 +55,10 @@ class HateSpeechDataset(Dataset):
 train_dataset = HateSpeechDataset(train_texts, train_labels, tokenizer)
 test_dataset = HateSpeechDataset(test_texts, test_labels, tokenizer)
 
+# Load model
 model = DistilBertForSequenceClassification.from_pretrained('distilbert-base-uncased', num_labels=2)
 
-# Simpler TrainingArguments
+# Training setup
 training_args = TrainingArguments(
     output_dir='./results',
     num_train_epochs=3,
@@ -69,10 +75,12 @@ trainer = Trainer(
     eval_dataset=test_dataset,
 )
 
+# Train model
 trainer.train()
 
-# Save model
+# Save model, tokenizer, and test data
 model.save_pretrained('./bert_model')
 tokenizer.save_pretrained('./bert_model')
+joblib.dump((test_texts, test_labels), 'bert_test_data.pkl')
 
-print("DistilBERT model and tokenizer saved successfully.")
+print("DistilBERT model, tokenizer, and test data saved successfully.")

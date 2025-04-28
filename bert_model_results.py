@@ -1,7 +1,6 @@
-import os
-import pandas as pd
 import torch
-from torch.utils.data import Dataset
+import joblib
+from torch.utils.data import Dataset, DataLoader
 from transformers import DistilBertTokenizerFast, DistilBertForSequenceClassification
 from sklearn.metrics import classification_report, confusion_matrix
 import matplotlib.pyplot as plt
@@ -12,29 +11,8 @@ model = DistilBertForSequenceClassification.from_pretrained('./bert_model')
 tokenizer = DistilBertTokenizerFast.from_pretrained('./bert_model')
 model.eval()
 
-# Set dataset path
-dataset_path = 'hate-speech-dataset-master'
-annotations_path = os.path.join(dataset_path, 'annotations_metadata.csv')
-all_files_path = os.path.join(dataset_path, 'all_files')
-
-# Load dataset
-annotations = pd.read_csv(annotations_path)
-annotations = annotations[annotations['label'].isin(['hate', 'noHate'])]
-annotations['label'] = annotations['label'].map({'noHate': 0, 'hate': 1})
-
-# Load text content
-def load_text(file_id):
-    file_path = os.path.join(all_files_path, f"{file_id}.txt")
-    if os.path.exists(file_path):
-        with open(file_path, 'r', encoding='utf-8') as file:
-            return file.read().strip()
-    return ""
-
-annotations['text'] = annotations['file_id'].apply(load_text)
-annotations = annotations.dropna(subset=['text'])
-
-texts = annotations['text'].tolist()
-labels = annotations['label'].tolist()
+# Load saved test data
+test_texts, test_labels = joblib.load('bert_test_data.pkl')
 
 # Create dataset class
 class HateSpeechDataset(Dataset):
@@ -50,10 +28,8 @@ class HateSpeechDataset(Dataset):
     def __len__(self):
         return len(self.labels)
 
-dataset = HateSpeechDataset(texts, labels, tokenizer)
-
-# Create DataLoader
-from torch.utils.data import DataLoader
+# Create dataset and DataLoader
+dataset = HateSpeechDataset(test_texts, test_labels, tokenizer)
 loader = DataLoader(dataset, batch_size=16)
 
 # Get predictions
@@ -83,23 +59,3 @@ def plot_confusion_matrix(y_true, y_pred, model_name):
     plt.show()
 
 plot_confusion_matrix(y_trues, y_preds, "DistilBERT")
-
-# Test model on sample sentences
-test_sentences = [
-    "I love my culture and my people.",
-    "Women should stay at home and not work.",
-    "Immigrants are ruining this country.",
-    "Black people are amazing and resilient.",
-]
-
-def predict_sentences(sentences):
-    encodings = tokenizer(sentences, truncation=True, padding=True, return_tensors='pt')
-    with torch.no_grad():
-        outputs = model(**encodings)
-        preds = torch.argmax(outputs.logits, dim=-1)
-    label_map = {0: "Non-Toxic", 1: "Toxic"}
-    for sentence, pred in zip(sentences, preds):
-        print(f"\nText: {sentence}")
-        print(f"Prediction: {label_map[pred.item()]}")
-
-predict_sentences(test_sentences)
