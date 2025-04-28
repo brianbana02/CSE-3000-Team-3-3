@@ -1,4 +1,4 @@
-# CSE 3000 Team 3 - Hate Speech Detection Project
+# CSE 3000 Team 3-3 - Hate Speech Detection Project
 
 ## Overview
 
@@ -65,14 +65,16 @@ CSE-3000-Team-3/
 
 ## Running the Models
 
-```bash
-# Train and Evaluate Models
+### Logistic Regression
 
-# Logistic Regression
+```bash
 python logistic_regression_training.py
 python logistic_regression_results.py
+```
 
-# DistilBERT
+### DistilBERT
+
+```bash
 python bert_model_training.py
 python bert_model_results.py
 ```
