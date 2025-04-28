@@ -63,7 +63,7 @@ X_train_tfidf = vectorizer.fit_transform(X_train)
 X_test_tfidf = vectorizer.transform(X_test)
 
 # Train Logistic Regression
-logistic_model = LogisticRegression()
+logistic_model = LogisticRegression(max_iter=1000)
 logistic_model.fit(X_train_tfidf, y_train)
 
 # Predictions
@@ -74,8 +74,9 @@ print("Logistic Regression Performance:")
 print("Accuracy:", accuracy_score(y_test, logistic_pred))
 print("Classification Report:\n", classification_report(y_test, logistic_pred))
 
-# Save Model and Vectorizer
+# Save Model, Vectorizer, and Test Data
 joblib.dump(logistic_model, 'logistic_model.pkl')
 joblib.dump(vectorizer, 'tfidf_vectorizer.pkl')
+joblib.dump((X_test_tfidf, y_test), 'test_data.pkl')
 
-print("Logistic Regression model and TF-IDF vectorizer saved.")
+print("Logistic Regression model, TF-IDF vectorizer, and test data saved.")
