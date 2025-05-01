@@ -53,7 +53,7 @@ CSE-3000-Team-3/
 1. Clone the repository:
    ```bash
    git clone <repository_url>
-   cd CSE-3000-Team-3
+   cd CSE-3000-Team-3-3
    ```
 
 2. Install dependencies:
