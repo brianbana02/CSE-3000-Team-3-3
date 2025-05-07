@@ -4,7 +4,7 @@
 
 This project builds and evaluates two models for hate speech detection:
 
-- Logistic Regression with TF-IDF
+- Logistic Regression with TF-IDF vectorization
 - DistilBERT Model: Lightweight transformer model trained to detect hate speech
 
 The dataset contains 10,703 samples labeled as "hate" or "noHate".  
